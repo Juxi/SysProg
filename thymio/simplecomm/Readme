@@ -1,0 +1,21 @@
+should work on MacOSX
+
+to run>
+make
+./test <port that the thymio is connected to>
+
+e.g.
+./test /dev/cu.usbmodemfd121 
+
+This should just send a reset signal to your robot and you
+will be hearing the robot's ready signal. That's it for now!
+You should also see some output on the command line like so:
+juxi@home:> ./test /dev/cu.usbmodemfd121 
+Connected to /dev/cu.usbmodemfd121 ... and configured!
+wrote 8 bytes
+received 6 bytes
+juxi@home:>
+
+
+That's all folks,
+//Juxi <juxi@idsia.ch>
