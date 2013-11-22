@@ -9,10 +9,14 @@
  *         http://Juxi.net/
  ********************************************/
 
+#include <ctype.h>
 #include "thymio.h"
 
 int connect(const char *port_name) {
 	int port;
+
+	/* enable CTRL-C callback which should close the file */
+	signal(SIGINT,disconnect);	
 
 	if((port = open(port_name, O_RDWR)) < 0)
 		return -1;
@@ -68,6 +72,17 @@ int configure(int port) {
 	return 0;
 }
 
+/* create a message structure for the aseba communication */
+void create_message(message_t *msg, uint16_t type, void *data, uint16_t len) {
+	/* build message structure */
+	msg->hdr.typ = (uint16_t) type;
+	msg->hdr.len = (uint16_t) 2;				
+	msg->raw = (uint8_t *) malloc(msg->hdr.len);
+	// msg->raw[0] = ((uint8_t*) data)[0];		//destination
+	for(int i=0;i < msg->hdr.len; i++)
+		msg->raw[i] = ((uint8_t*) data)[i];		//destination
+}
+
 
 
 /* warning this destroys the message! */
@@ -79,7 +94,7 @@ int write_message(int port, message_t *msg) {
 		fprintf(stderr, "maximum packet payload size: %d\n", ASEBA_MAX_EVENT_ARG_SIZE);
 		return -1;
 	}
-	int written_bytes = 0, h;
+	int written_bytes = 0;
 
 	//printf("HEADER: %04x %04x %04x\n", msg->hdr.len, msg->hdr.src, msg->hdr.typ);
 	
@@ -123,7 +138,6 @@ int write_message(int port, message_t *msg) {
 
 int read_message(int port, message_t *msg) {
 	uint16_t buf[1024];
-	long n, dotcount = 0, sum = 0;
 
 	/* read the header */
 	if(read(port, buf, 2) != 2) return -1;
@@ -133,42 +147,17 @@ int read_message(int port, message_t *msg) {
 	if(read(port, buf, 2) != 2) return -1;
 	msg->hdr.typ = *buf;
 	
+	/* read the raw data */
 	if (msg->hdr.len) {
 		msg->raw = (uint8_t *) malloc(msg->hdr.len);
 		read(port, msg->raw, msg->hdr.len);
 	}
 
-	printf("received %d bytes\n", 6+msg->hdr.len);
+	/* don't print this info!
+	printf("received %d bytes\n", 6+msg->hdr.len); */
 
-	/*  maybe try this here?
-if (size == 0)
-                                return;
-                        
-                        char *ptr = (char *)data;
-                        size_t left = size;
-                        
-                        while (left)
-                        {
-                                ssize_t len = ::read(fd, ptr, left);
-                                
-                                if (len < 0)
-                                {
-                                        fail(DashelException::IOError, errno, "File read I/O error.");
-                                }
-                                else if (len == 0)
-                                {
-                                        fail(DashelException::ConnectionLost, 0, "Reached end of file.");
-                                }
-                                else
-                                {
-                                        ptr += len;
-                                        left -= len;
-                                }
-                        }
-	/**/
 	return 6 + msg->hdr.len;
 }
-
 
 uint16_t* swap_endian(uint16_t *buf, int n) {
 	int i = 0;
@@ -177,6 +166,155 @@ uint16_t* swap_endian(uint16_t *buf, int n) {
 }
 
 void disconnect(int signum) { close(intFH); }
+
+
+int parse_from_raw(const uint8_t *r, uint16_t *v) {
+	// printf("%02x%02x %d", r[0], r[1], *((uint16_t*)r));
+	//((uint16_t)r[1]) << 8 | (uint16_t) r[0];
+	*v = *((uint16_t*)r); 
+	return 0;
+}
+
+int parse_string_from_raw(const uint8_t *r, char *s, int len) {
+	int i;
+	for(i = 0; i < len; i++) {
+		s[i] = r[i];
+	}
+	s[i] = '\0';
+	return i;
+}
+
+
+
+int parse_desc_reply(message_t *msg, uint16_t *n_named_vars,
+		uint16_t *n_local_events, uint16_t *n_native_funcs)
+{
+	printf("Parsing description message:\n");
+		// from the other side:
+		// add(WStringToUTF8(name));
+	char *s = (char*) malloc(msg->hdr.len);
+	// uint8_t *h = msg->raw;	// for backup
+	int bytes_read = parse_string_from_raw(msg->raw, s, msg->hdr.len - 14);
+	printf("\tname: %s (%d)\n", s, bytes_read);
+	free(s);
+
+		// add(static_cast<uint16>(protocolVersion));
+	uint16_t t;
+	parse_from_raw(msg->raw + bytes_read, &t);
+	printf("\tprotocol v: %u\n", t);
+	bytes_read += 2;
+
+		// add(static_cast<uint16>(bytecodeSize));
+	parse_from_raw(msg->raw + bytes_read, &t);
+	printf("\tbytecode size: %u\n", t);
+	bytes_read += 2;
+
+		// add(static_cast<uint16>(stackSize));
+	parse_from_raw(msg->raw + bytes_read, &t);
+	printf("\tstack size: %u\n", t);
+	bytes_read += 2;
+		// add(static_cast<uint16>(variablesSize));
+	parse_from_raw(msg->raw + bytes_read, &t);
+	printf("\tvariables size: %u\n", t);
+	bytes_read += 2;
+		
+		// add(static_cast<uint16>(namedVariables.size()));
+	parse_from_raw(msg->raw + bytes_read, &t);
+	printf("\tnamed variables size: %u\n", t);
+	bytes_read += 2;
+	*n_named_vars = t;
+		// // named variables are sent separately
+
+		// add(static_cast<uint16>(localEvents.size()));
+	parse_from_raw(msg->raw + bytes_read, &t);
+	printf("\tlocal events size: %u\n", t);
+	bytes_read += 2;
+	*n_local_events = t;
+		// // local events are sent separately
+		
+		// add(static_cast<uint16>(nativeFunctions.size()));
+	parse_from_raw(msg->raw + bytes_read, &t);
+	printf("\tnative functions size: %u\n", t);
+	bytes_read += 2;
+	*n_native_funcs = t;
+		// native functions are sent separately
+
+	printf("%d bytes read of %d\n", bytes_read, msg->hdr.len);
+
+	return 0;
+}
+
+
+/* reading this messages and print out the variables available
+   but dropping them immediatley */
+int read_named_variables(int port, uint16_t cnt) {
+	uint16_t h; char* s = NULL;
+	message_t msg = {{0,0,0}, NULL};
+
+	while(cnt-- > 0) {
+		read_message(port, &msg);
+		parse_from_raw(msg.raw, &h);
+		s = (char*) malloc(msg.hdr.len - 2);
+		UTF8ToWString(msg.raw + 2, msg.hdr.len - 2, s);
+		printf("\n\tvariable name: %s (%d)\t", s, h);
+
+		// printf("descr: (%d) ", msg.hdr.len);
+		// for(i = 0; i < strlen(s); i++) putchar(s[i]);
+
+		if(s) free(s);
+		if(msg.raw) free(msg.raw);
+	}
+	return 0;
+}
+
+/* reading this messages but dropping them immediatley */
+int read_local_events(int port, uint16_t cnt) {
+	message_t msg = {{0,0,0}, NULL};
+	while(cnt-- > 0) {
+		read_message(port, &msg);
+		if(msg.raw) free(msg.raw);
+	}
+	return 0;	
+}
+
+/* reading this messages but dropping them immediatley */
+int read_native_functions(int port, uint16_t cnt) {
+	message_t msg = {{0,0,0}, NULL};
+	while(cnt-- > 0) {
+		read_message(port, &msg);
+		if(msg.raw) free(msg.raw);
+	}
+	return 0;	
+}
+
+/* taken from Aseba source code */
+void UTF8ToWString(const uint8_t *s, int len, char *out) {
+	int j = 0;
+	for (int i = 0; i < len; ++i)	{
+		const uint8_t *a = &s[i];
+		if (*a == '\n' || *a == '\t' || *a == '\r') continue;
+		else if (!(*a&128)) {
+			//Byte represents an ASCII character. Direct copy will do.
+			if(isprint(*a)) out[j++] = *a;
+		}else if ((*a&192)==128)
+			//Byte is the middle of an encoded character. Ignore.
+			continue;
+		else if ((*a&224)==192)
+			//Byte represents the start of an encoded character in the range
+			//U+0080 to U+07FF
+			out[j++] = ((*a&31)<<6)|(a[1]&63);
+		else if ((*a&240)==224)
+			//Byte represents the start of an encoded character in the range
+			//U+07FF to U+FFFF
+			out[j++] = ((*a&15)<<12)|((a[1]&63)<<6)|(a[2]&63);
+		else if ((*a&248)==240)
+			//Byte represents the start of an encoded character beyond the
+			//U+FFFF limit of 16-bit integers
+			out[j++] = '?';
+	}
+	// TODO: add >UTF16 support
+	out[j++] = L'\0';
+}
 
 // int test_write_message(int port, message_t *msg) {
 // this works!:)
@@ -201,31 +339,4 @@ void disconnect(int signum) { close(intFH); }
 // 	rawData[1] = ptr[1];
 
 // 	write(port, &rawData[0], 2);
-// }
-
-
-// from dashel/aseba studio
-// void connect() {
-// //				std::string proto, params;
-//                 char *proto = "ser";
-//                 char *params = "name=Thymio-II";
-                
-//                 SelectableStream *s(dynamic_cast<SelectableStream*>(
-//                 	streamTypeRegistry.create(proto, target, *this)));
-//                 // calls creatorFunc --> new SerialStream()
-//                 	// this creates
-//                 if(!s)
-//                 {
-//                         std::string r = "Invalid protocol in target: ";
-//                         r += proto;
-//                         r += ", known protocol are: ";
-//                         r += streamTypeRegistry.list();
-//                 }
-                
-//                 /* The caller must have the stream lock held */
-                
-//                 streams.insert(s);
-//                 dataStreams.insert(s);
-//                 connectionCreated(s);
-//                 //return s;
 // }

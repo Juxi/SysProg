@@ -34,6 +34,7 @@ typedef struct message {
 } message_t;
 
 #define ASEBA_DEST_DEBUG 0
+#define ASEBA_PROTOCOL_VERSION 4
 #define	SLEEP_MS 10000 		/* 10 ms */
 #define THYMIO_ID 1
 #define ASEBA_MAX_EVENT_ARG_SIZE (2*258)
@@ -60,15 +61,30 @@ enum {
 	ASEBA_MESSAGE_SUSPEND_TO_RAM,
 };
 
-/* Robot Communication Functions*/
+/* Global variable  */
+int intFH; /* keep a copy of the port handle for the interrupt signal */
+
+
+/* Low Level Robot Communication Functions */
 int connect(const char *port_name);
 int configure(int port);
+void create_message(message_t *msg, uint16_t type, void *data, uint16_t len);
 int read_message(int port, message_t *msg);
 int write_message(int port, message_t *msg);
 
+/* parse content from the rawdata in the message */
+int parse_from_raw(const uint8_t *r, uint16_t *v);
+int parse_string_from_raw(const uint8_t *r, char *s, int len);
 
-/* Global variable  */
-int intFH; /* keep a copy of the port handle for the interrupt signal */
+/* mid level communication functions */
+int parse_desc_reply(message_t *msg, uint16_t *n_named_vars,
+		uint16_t *n_local_events, uint16_t *n_native_funcs);
+
+/* higher level communication functions */
+int read_named_variables(int port, uint16_t cnt);
+int read_local_events(int port, uint16_t cnt);
+int read_native_functions(int port, uint16_t cnt);
+
 
 /* CTRL-C signal handler and disconnecter */
 void disconnect(int signum);
@@ -76,5 +92,8 @@ void disconnect(int signum);
 /*	swap each element's bytes
 	this function is actually not needed here */
 uint16_t* swap_endian(uint16_t *buf, int n);
+
+/*  convert a byte stream to a string  */
+void UTF8ToWString(const uint8_t *s, int len, char *out);
 
 #endif
