@@ -15,13 +15,12 @@
 #include "thymio.h"
 
 int main(int argc, char const *argv[]) {
-	
-	/* re-install default handler */
-	if (argc < 2) {
+		if (argc < 2) {
 		fprintf(stderr, "No port specified to read!\nUSAGE: %s robotportinfo\n", argv[0]);
 		fprintf(stderr, "Example: %s /dev/cu.usbmodem\n", argv[0]);
 		return EXIT_FAILURE;
 	}
+	
 	/* enable CTRL-C callback */
 	signal(SIGINT,disconnect);
 
