@@ -40,8 +40,8 @@ void create_message(message_t *msg, uint16_t type, void* data, uint16_t len);
 int send_reboot_msg(int port);
 int send_stop_msg(int port);
 int send_get_desc_msg(int port);
-int send_get_vars_msg(int port);
-int send_set_vars_msg(int port);
+int send_get_vars_msg(int port, uint16_t idx, uint16_t n_values);
+int send_set_var_msg(int port, uint16_t idx, uint16_t value);
 
 
 /* * * * * * * * * * * * * * * * * * * * *
@@ -95,14 +95,17 @@ int main(int argc, char const *argv[]) {
 			/* get motor speed left, right */
 			case 'e': case 'E':
 				printf("the motor speeds are:\t");
-				send_get_vars_msg(usb_port);
+				int h;
+				sscanf(line+2, "%d", &h);
+				send_get_vars_msg(usb_port, (uint16_t)h, 1);
 
 				printf("left=%d\tright=%d\n", 0, 0);
 				break;
 
 			/* drive the robot */
 			case 'd':
-
+				sscanf(line+2, "%d", &h);
+				send_set_var_msg(usb_port, (uint16_t)h, 1);
 				break;
 
 			/* stop the robot */
@@ -218,21 +221,58 @@ int send_get_desc_msg(int port) {
 	return 0;
 }
 
-int send_get_vars_msg(int port) {
+int send_get_vars_msg(int port,  uint16_t idx, uint16_t n_values) {
 	message_t msg = {{0, 0, 0}, NULL};
-	uint16_t idx = 0, n_values = 1;
 	uint16_t value = -1;
 
 	// L"motor.left.speed"
 	/* build message structure */
 	uint16_t data[3];
 
-	for(idx = 516; idx < 800; idx++) {
+	// for(idx = 516; idx < 800; idx++) {
 			data[0] = (uint16_t) THYMIO_ID;
 			data[1] = (uint16_t) idx;
-			data[1] = (uint16_t) n_values;
-			create_message(&msg, ASEBA_MESSAGE_GET_VARIABLES, &data, sizeof(data));
+			data[2] = (uint16_t) n_values;
+			create_message(&msg, ASEBA_MESSAGE_GET_VARIABLES, &data, 6);
 			write_message(port, &msg);
+			print_message_header(&msg);
+			free(msg.raw);		/* Cleanup! */
+			
+			usleep(SLEEP_MS*10);
+			/* read some bytes */
+			if(read_message(port, &msg) == 0) {
+				printf("Warning! We did not receive a reply!\n");
+				return -1;
+			}
+			printf("received %d bytes\n", msg.hdr.len + 6);
+			print_message_header(&msg);
+	
+			// do something with the message!!
+			parse_from_raw(msg.raw, &value);
+			printf("value of #%d is: %d\n", idx, value);
+			//free(msg.raw);
+	// }
+	printf("Done parsing variables!\n");
+	return 0;
+}
+
+int send_set_var_msg(int port,  uint16_t idx, uint16_t n_values) {
+	message_t msg = {{0, 0, 0}, NULL};
+	uint16_t value = -1;
+
+	// L"motor.left.speed"
+	/* build message structure */
+	uint16_t data[3];
+
+	// for(idx = 516; idx < 800; idx++) {
+			// data[0] = (uint16_t) THYMIO_ID;
+			// data[1] = (uint16_t) idx;
+			// data[2] = (uint16_t) n_values;
+			data[0] = (uint16_t) idx;
+			data[1] = (uint16_t) 32;
+			create_message(&msg, ASEBA_MESSAGE_SET_VARIABLES, &data, 4);
+			write_message(port, &msg);
+			print_message_header(&msg);
 			free(msg.raw);		/* Cleanup! */
 			
 			usleep(SLEEP_MS*10);
@@ -243,12 +283,11 @@ int send_get_vars_msg(int port) {
 			}
 			printf("received %d bytes\n", msg.hdr.len + 6);
 	
-			// do something with the message!!
-			parse_from_raw(msg.raw, &value);
-			printf("value of #%d is: %d\n", idx, value);
+			// // do something with the message!!
+			// parse_from_raw(msg.raw, &value);
+			printf("value of #%d is: %d\n", idx, data[1]);
 			//free(msg.raw);
-	}
-	printf("Done parsing variables!\n");
+	// }
 	return 0;
 }
 

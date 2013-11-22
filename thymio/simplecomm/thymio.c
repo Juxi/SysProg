@@ -96,7 +96,7 @@ int write_message(int port, message_t *msg) {
 	}
 	int written_bytes = 0;
 
-	//printf("HEADER: %04x %04x %04x\n", msg->hdr.len, msg->hdr.src, msg->hdr.typ);
+	// print_mesage_header(&msg);
 	
 	/* write the message header (len, src, type) */
 	written_bytes = write(port, &msg->hdr.len, 2);
@@ -158,6 +158,13 @@ int read_message(int port, message_t *msg) {
 
 	return 6 + msg->hdr.len;
 }
+
+
+void print_message_header(message_t *msg) {
+	printf("HEADER:\n\tlen: 0x%04x (%d)\n\tsrc: 0x%04x (%d)\n\ttyp: 0x%04x (%d)\n",
+		msg->hdr.len, msg->hdr.len, msg->hdr.src, msg->hdr.src, msg->hdr.typ, msg->hdr.typ);
+}
+
 
 uint16_t* swap_endian(uint16_t *buf, int n) {
 	int i = 0;

@@ -40,6 +40,21 @@ typedef struct message {
 #define ASEBA_MAX_EVENT_ARG_SIZE (2*258)
 
 enum {
+
+/* from a specific node */
+	ASEBA_MESSAGE_DESCRIPTION = 0x9000,
+	ASEBA_MESSAGE_NAMED_VARIABLE_DESCRIPTION,
+	ASEBA_MESSAGE_LOCAL_EVENT_DESCRIPTION,
+	ASEBA_MESSAGE_NATIVE_FUNCTION_DESCRIPTION,
+	ASEBA_MESSAGE_DISCONNECTED,
+	ASEBA_MESSAGE_VARIABLES,
+	ASEBA_MESSAGE_ARRAY_ACCESS_OUT_OF_BOUNDS,
+	ASEBA_MESSAGE_DIVISION_BY_ZERO,
+	ASEBA_MESSAGE_EVENT_EXECUTION_KILLED,
+	ASEBA_MESSAGE_NODE_SPECIFIC_ERROR,
+	ASEBA_MESSAGE_EXECUTION_STATE_CHANGED,
+	ASEBA_MESSAGE_BREAKPOINT_SET_RESULT,
+		
 	/* from IDE to all nodes */
 	ASEBA_MESSAGE_GET_DESCRIPTION = 0xA000,
 	
@@ -68,9 +83,12 @@ int intFH; /* keep a copy of the port handle for the interrupt signal */
 /* Low Level Robot Communication Functions */
 int connect(const char *port_name);
 int configure(int port);
+
+/* message functions */
 void create_message(message_t *msg, uint16_t type, void *data, uint16_t len);
 int read_message(int port, message_t *msg);
 int write_message(int port, message_t *msg);
+void print_message_header(message_t *msg);
 
 /* parse content from the rawdata in the message */
 int parse_from_raw(const uint8_t *r, uint16_t *v);
