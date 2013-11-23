@@ -40,7 +40,7 @@ void create_message(message_t *msg, uint16_t type, void* data, uint16_t len);
 int send_reboot_msg(int port);
 int send_stop_msg(int port);
 int send_get_desc_msg(int port);
-int send_get_vars_msg(int port, uint16_t idx, uint16_t n_values);
+int send_get_vars_msg(int port, uint16_t idx, uint16_t n_values, message_t *msg);
 int send_set_var_msg(int port, uint16_t idx, uint16_t value);
 
 
@@ -59,6 +59,11 @@ int main(int argc, char const *argv[]) {
 	int running = 1;
 	size_t linecap = 0;
 	char *line = NULL;
+	int h;
+	uint16_t val = 0;
+	uint8_t *rp;	/* temporary raw pointer */
+	/* structure for returning values from read mehtods */	
+	message_t values = {{0, 0, 0}, NULL};
 
 	/* open the USB/serial port like a file */
 	if((usb_port = connect(argv[1])) == -1) {
@@ -95,17 +100,30 @@ int main(int argc, char const *argv[]) {
 			/* get motor speed left, right */
 			case 'e': case 'E':
 				printf("the motor speeds are:\t");
-				int h;
 				sscanf(line+2, "%d", &h);
-				send_get_vars_msg(usb_port, (uint16_t)h, 1);
+				send_get_vars_msg(usb_port, (uint16_t)h, 2, &values);
 
 				printf("left=%d\tright=%d\n", 0, 0);
 				break;
 
+			/* get floor proximity sensor values left, right */
+			case 'm': case 'M':
+				printf("the floor proximity readouts are:\t");
+				send_get_vars_msg(usb_port, 68, 2, &values);
+				if(values.hdr.len == 4) {
+					rp = values.raw;
+					read_from_raw(rp, &val);
+					printf("left=%d\t", val);
+					read_from_raw(rp, &val);
+					printf("right=%d\n", val);
+				}
+				break;
+
+
 			/* drive the robot */
 			case 'd':
 				sscanf(line+2, "%d", &h);
-				send_set_var_msg(usb_port, (uint16_t)h, 1);
+				send_set_var_msg(usb_port, (uint16_t)h, 2);
 				break;
 
 			/* stop the robot */
@@ -182,8 +200,6 @@ int send_stop_msg(int port) {
 int send_get_desc_msg(int port) {
 	message_t msg = {{0, 0, 0}, NULL};
 	uint16_t n_named_vars, n_local_events, n_native_funcs;
-	char *s;
-
 
 	/* build message structure */
 	uint16_t data = (uint16_t)ASEBA_PROTOCOL_VERSION;
@@ -221,71 +237,59 @@ int send_get_desc_msg(int port) {
 	return 0;
 }
 
-int send_get_vars_msg(int port,  uint16_t idx, uint16_t n_values) {
-	message_t msg = {{0, 0, 0}, NULL};
+int send_get_vars_msg(int port,  uint16_t idx, uint16_t n_values, message_t *msg) {
 	uint16_t value = -1;
 
-	// L"motor.left.speed"
 	/* build message structure */
 	uint16_t data[3];
 
-	// for(idx = 516; idx < 800; idx++) {
-			data[0] = (uint16_t) THYMIO_ID;
-			data[1] = (uint16_t) idx;
-			data[2] = (uint16_t) n_values;
-			create_message(&msg, ASEBA_MESSAGE_GET_VARIABLES, &data, 6);
-			write_message(port, &msg);
-			print_message_header(&msg);
-			free(msg.raw);		/* Cleanup! */
-			
-			usleep(SLEEP_MS*10);
-			/* read some bytes */
-			if(read_message(port, &msg) == 0) {
-				printf("Warning! We did not receive a reply!\n");
-				return -1;
-			}
-			printf("received %d bytes\n", msg.hdr.len + 6);
-			print_message_header(&msg);
+	data[0] = (uint16_t) THYMIO_ID;
+	data[1] = (uint16_t) idx;
+	data[2] = (uint16_t) n_values;
+	create_message(msg, ASEBA_MESSAGE_GET_VARIABLES, &data, 6);
+	write_message(port, msg);
+	print_message_header(msg);
+	free(msg->raw);		/* Cleanup! */
 	
-			// do something with the message!!
-			parse_from_raw(msg.raw, &value);
-			printf("value of #%d is: %d\n", idx, value);
-			//free(msg.raw);
-	// }
-	printf("Done parsing variables!\n");
+	usleep(SLEEP_MS*10);
+
+	/* read some bytes */
+	if(read_message(port, msg) == 0) {
+		printf("Warning! We did not receive a reply!\n");
+		return -1;
+	}
+	printf("received %d bytes\n", msg->hdr.len + 6);
+
+	print_message_header(msg);
 	return 0;
 }
 
-int send_set_var_msg(int port,  uint16_t idx, uint16_t n_values) {
+int send_set_var_msg(int port,  uint16_t idx, uint16_t value) {
 	message_t msg = {{0, 0, 0}, NULL};
-	uint16_t value = -1;
 
 	// L"motor.left.speed"
 	/* build message structure */
 	uint16_t data[3];
 
-	// for(idx = 516; idx < 800; idx++) {
-			// data[0] = (uint16_t) THYMIO_ID;
-			// data[1] = (uint16_t) idx;
-			// data[2] = (uint16_t) n_values;
-			data[0] = (uint16_t) idx;
-			data[1] = (uint16_t) 32;
-			create_message(&msg, ASEBA_MESSAGE_SET_VARIABLES, &data, 4);
-			write_message(port, &msg);
-			print_message_header(&msg);
-			free(msg.raw);		/* Cleanup! */
+	data[0] = (uint16_t) idx;
+	data[1] = (uint16_t) value;
+	create_message(&msg, ASEBA_MESSAGE_SET_VARIABLES, &data, 4);
+	write_message(port, &msg);
+	print_message_header(&msg);
+	free(msg.raw);		/* Cleanup! */
 			
-			usleep(SLEEP_MS*10);
-			/* read some bytes */
-			if(read_message(port, &msg) == 0) {
-				printf("Warning! We did not receive a reply!\n");
-				return -1;
-			}
-			printf("received %d bytes\n", msg.hdr.len + 6);
+	usleep(SLEEP_MS*10);
+
+			// /* read some bytes */
+			// if(read_message(port, &msg) == 0) {
+			// 	printf("Warning! We did not receive a reply!\n");
+			// 	return -1;
+			// }
+			// printf("received %d bytes\n", msg.hdr.len + 6);
 	
 			// // do something with the message!!
 			// parse_from_raw(msg.raw, &value);
-			printf("value of #%d is: %d\n", idx, data[1]);
+//			printf("value of #%d is: %d\n", idx, data[1]);
 			//free(msg.raw);
 	// }
 	return 0;
