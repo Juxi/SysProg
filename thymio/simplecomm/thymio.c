@@ -300,6 +300,132 @@ int read_native_functions(int port, uint16_t cnt) {
 	return 0;	
 }
 
+
+int send_reboot_msg(int port) {
+	message_t msg = {{0, 0, 0}, NULL};
+
+	/* clear input buffer */
+
+	/* build message structure */
+	uint16_t data = THYMIO_ID;
+	create_message(&msg, ASEBA_MESSAGE_REBOOT, &data, 2);
+
+	/* write some bytes */
+	write_message(port, &msg);
+	free(msg.raw);		/* Cleanup! */
+	
+	usleep(SLEEP_MS*10);
+	/* read some bytes */
+	printf("received %d bytes\n", read_message(port, &msg));
+
+	return 0;
+}
+
+
+int send_stop_msg(int port) {
+	message_t msg = {{0, 0, 0}, NULL};
+
+	/* build message structure */
+	uint16_t data = THYMIO_ID;
+	create_message(&msg, ASEBA_MESSAGE_STOP, &data, 2);
+	write_message(port, &msg);
+	free(msg.raw);		/* Cleanup! */
+	
+	usleep(SLEEP_MS*10);
+	/* read some bytes */
+	printf("received %d bytes\n", read_message(port, &msg));
+
+	// uint16_t value;
+	// parse_from_raw(msg.raw, &value);
+	// printf("value of #%d is: %d\n", 0, value);
+	// parse_from_raw(msg.raw + 2, &value);
+	// printf("value of #%d is: %d\n", 1, value);
+
+	return 0;
+}
+
+
+int send_get_desc_msg(int port) {
+	message_t msg = {{0, 0, 0}, NULL};
+	uint16_t n_named_vars, n_local_events, n_native_funcs;
+
+	/* build message structure */
+	uint16_t data = (uint16_t)ASEBA_PROTOCOL_VERSION;
+	create_message(&msg, ASEBA_MESSAGE_GET_DESCRIPTION, &data, 2);
+	write_message(port, &msg);
+	free(msg.raw);		/* Cleanup! */
+	
+	usleep(SLEEP_MS*10);
+	/* read some bytes */
+	read_message(port, &msg);	
+	parse_desc_reply(&msg,
+		&n_named_vars, &n_local_events, &n_native_funcs);
+
+	/* next messages contain the named variables */
+	printf("reading named variables... ");
+	read_named_variables(port, n_named_vars);
+	printf("done!\n");
+
+	/* next messages contain the local events */
+	printf("reading local events...");
+	read_local_events(port, n_local_events);
+	printf("done!\n");
+
+	/* next messages contain the local events */
+	printf("reading native functions...");
+	read_native_functions(port, n_native_funcs);
+	printf("done!\n");
+
+
+	printf("Done parsing description messages!\n");
+	return 0;
+}
+
+int send_get_vars_msg(int port,  uint16_t idx, uint16_t n_values, message_t *msg) {
+	/* build message structure */
+	uint16_t data[3];
+	data[0] = (uint16_t) THYMIO_ID;
+	data[1] = (uint16_t) idx;
+	data[2] = (uint16_t) n_values;
+	create_message(msg, ASEBA_MESSAGE_GET_VARIABLES, &data, sizeof(data));
+	write_message(port, msg);
+	// print_message_header(msg);
+	free(msg->raw);		/* Cleanup! */
+	
+	usleep(SLEEP_MS*10);
+
+	/* read some bytes */
+	printf("received %d bytes\n", read_message(port, msg));
+	// print_message_header(msg);
+	return 0;
+}
+
+int send_set_vars_msg(int port,  uint16_t idx, uint16_t *values, uint16_t n_values) {
+	message_t msg = {{0, 0, 0}, NULL};
+	int i;
+
+	/* build message structure */
+	uint16_t len = sizeof(uint16_t) * (2 + n_values);
+	uint16_t *data = (uint16_t*) malloc(len);
+	//uint16_t data = [3]; 
+	data[0] = (uint16_t) THYMIO_ID;
+	data[1] = (uint16_t) idx;
+	for(i = 0; i < n_values; i++)
+		data[2+i] =  values[i];
+
+	create_message(&msg, ASEBA_MESSAGE_SET_VARIABLES, data, len);
+	write_message(port, &msg);
+	//print_message_header(&msg);
+	free(msg.raw);	/* Cleanup! */
+	free(data);		/* Cleanup! */	
+			
+	/* the set vars message does not yield a reply */
+
+	return 0;
+}
+
+
+
 /* taken from Aseba source code */
 void UTF8ToWString(const uint8_t *s, int len, char *out) {
 	int j = 0;

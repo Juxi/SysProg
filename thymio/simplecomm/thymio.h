@@ -39,9 +39,9 @@ typedef struct message {
 #define THYMIO_ID 1
 #define ASEBA_MAX_EVENT_ARG_SIZE (2*258)
 
+/* constants taken from Aseba */
 enum {
-
-/* from a specific node */
+	/* from a specific node */
 	ASEBA_MESSAGE_DESCRIPTION = 0x9000,
 	ASEBA_MESSAGE_NAMED_VARIABLE_DESCRIPTION,
 	ASEBA_MESSAGE_LOCAL_EVENT_DESCRIPTION,
@@ -100,10 +100,19 @@ int read_from_raw(uint8_t **r, uint16_t *v);
 int parse_desc_reply(message_t *msg, uint16_t *n_named_vars,
 		uint16_t *n_local_events, uint16_t *n_native_funcs);
 
+
 /* higher level communication functions */
-int read_named_variables(int port, uint16_t cnt);
-int read_local_events(int port, uint16_t cnt);
-int read_native_functions(int port, uint16_t cnt);
+int send_reboot_msg(int port);
+int send_get_desc_msg(int port);
+	int read_named_variables(int port, uint16_t cnt);
+	int read_local_events(int port, uint16_t cnt);
+	int read_native_functions(int port, uint16_t cnt);
+
+int send_get_vars_msg(int port, uint16_t idx, uint16_t n_values, message_t *msg);
+int send_set_vars_msg(int port, uint16_t idx, uint16_t *values, uint16_t n_values);
+
+/* Aseba program execution control */
+int send_stop_msg(int port);
 
 
 /* CTRL-C signal handler and disconnecter */
