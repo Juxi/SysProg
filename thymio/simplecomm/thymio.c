@@ -76,7 +76,7 @@ int configure(int port) {
 void create_message(message_t *msg, uint16_t type, void *data, uint16_t len) {
 	/* build message structure */
 	msg->hdr.typ = (uint16_t) type;
-	msg->hdr.len = (uint16_t) 2;				
+	msg->hdr.len = (uint16_t) len;				
 	msg->raw = (uint8_t *) malloc(msg->hdr.len);
 	// msg->raw[0] = ((uint8_t*) data)[0];		//destination
 	for(int i=0;i < msg->hdr.len; i++)
@@ -174,6 +174,12 @@ uint16_t* swap_endian(uint16_t *buf, int n) {
 
 void disconnect(int signum) { close(intFH); }
 
+
+int read_from_raw(uint8_t **r, uint16_t *v) {
+	parse_from_raw(*r, v);
+	*r += sizeof(*v);
+	return 0;
+}
 
 int parse_from_raw(const uint8_t *r, uint16_t *v) {
 	// printf("%02x%02x %d", r[0], r[1], *((uint16_t*)r));

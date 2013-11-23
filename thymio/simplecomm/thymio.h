@@ -93,6 +93,8 @@ void print_message_header(message_t *msg);
 /* parse content from the rawdata in the message */
 int parse_from_raw(const uint8_t *r, uint16_t *v);
 int parse_string_from_raw(const uint8_t *r, char *s, int len);
+/* equal to parse from raw but also moves the pointer! */
+int read_from_raw(uint8_t **r, uint16_t *v);
 
 /* mid level communication functions */
 int parse_desc_reply(message_t *msg, uint16_t *n_named_vars,
