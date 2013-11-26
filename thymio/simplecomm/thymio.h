@@ -1,28 +1,20 @@
-/*******************************************
- * Simple Thymio USB Communication 
+/*************************************************************
+ * Simple Thymio USB Communication Library
  * thymio.h
  *
  * Systems Programming BSc course    (2013)
  * Universita della Svizzera Italiana (USI)
  * 
- * author: Juxi Leitner <juxi@idsia.ch>
- *         http://Juxi.net/
- ********************************************/
+ * author: Juxi Leitner <juxi@idsia.ch>, http://Juxi.net/
+ *         Alexander Förster <alexander@idsia.ch>
+ ************************************************************/
 
 #ifndef _THYMIO_H_
 #define _THYMIO_H_
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <fcntl.h>	// for open, close
-
-#include <unistd.h>	// for read
-#include <signal.h>
-#include <termios.h> // for settings
-#include <string.h> // for memset
-
-// Aseba Message struture -> little endian!!
-// see https://aseba.wikidot.com/forum/t-655386/labview-interface#post-1800691
+#include <stdint.h>
+/* Aseba Message struture -> little endian!!
+ * see https://aseba.wikidot.com/forum/t-655386/labview-interface#post-1800691 */
 typedef struct message {
 	struct {
 		uint16_t len;
@@ -35,7 +27,7 @@ typedef struct message {
 
 #define ASEBA_DEST_DEBUG 0
 #define ASEBA_PROTOCOL_VERSION 4
-#define	SLEEP_MS 10000 		/* 10 ms */
+#define	SLEEP_MS 10000          /* 10 ms */
 #define THYMIO_ID 1
 #define ASEBA_MAX_EVENT_ARG_SIZE (2*258)
 
@@ -75,9 +67,6 @@ enum {
 	ASEBA_MESSAGE_REBOOT,
 	ASEBA_MESSAGE_SUSPEND_TO_RAM,
 };
-
-/* Global variable  */
-int intFH; /* keep a copy of the port handle for the interrupt signal */
 
 
 /* Low Level Robot Communication Functions */

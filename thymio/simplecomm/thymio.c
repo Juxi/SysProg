@@ -1,16 +1,29 @@
-/*******************************************
- * Simple Thymio USB Communication 
+/*************************************************************
+ * Simple Thymio USB Communication Library
  * thymio.h
  *
  * Systems Programming BSc course    (2013)
  * Universita della Svizzera Italiana (USI)
- * 
- * author: Juxi Leitner <juxi@idsia.ch>
- *         http://Juxi.net/
- ********************************************/
+ *
+ * author: Juxi Leitner <juxi@idsia.ch>, http://Juxi.net/
+ *         Alexander Förster <alexander@idsia.ch>
+ ************************************************************/
+
+#include "thymio.h"
 
 #include <ctype.h>
-#include "thymio.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <fcntl.h>      // for open, close
+
+#include <unistd.h>     // for read and usleep
+#include <signal.h>
+#include <termios.h>    // for settings
+#include <string.h>     // for memset
+
+/* Global variable  */
+static int intFH; /* keep a copy of the port handle for the interrupt signal */
+
 
 int connect(const char *port_name) {
 	int port;
@@ -21,7 +34,7 @@ int connect(const char *port_name) {
 	if((port = open(port_name, O_RDWR)) < 0)
 		return -1;
 
-	//int lockRes = flock(port, LOCK_EX|LOCK_NB);
+	/* int lockRes = flock(port, LOCK_EX|LOCK_NB);  do we need that? */
 
 	intFH = port;	/* in case the interrupt handler needs to close the port */
 	printf("Connected to %s ... ", port_name);
