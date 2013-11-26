@@ -198,12 +198,25 @@ int parse_from_raw(const uint8_t *r, uint16_t *v) {
 	return 0;
 }
 
-int parse_string_from_raw(const uint8_t *r, char *s, int len) {
+// int parse_string_from_raw(const uint8_t *r, char *s, int len) {
+
+
+// 	int i;
+// 	for(i = 0; i < len; i++) {
+// 		s[i] = r[i];
+// 	}
+// 	s[i] = '\0';
+// 	return i;
+// }
+
+int parse_stdstring_from_raw(const uint8_t *r, char **p_in) {
+	uint8_t len = *r; 
 	int i;
+	char *s = (*p_in) = (char *) malloc(len + 1);
 	for(i = 0; i < len; i++) {
-		s[i] = r[i];
+		s[i] = r[i+1];
 	}
-	s[i] = '\0';
+	s[i++] = '\0';
 	return i;
 }
 
@@ -213,54 +226,53 @@ int parse_desc_reply(message_t *msg, uint16_t *n_named_vars,
 		uint16_t *n_local_events, uint16_t *n_native_funcs)
 {
 	printf("Parsing description message:\n");
-		// from the other side:
-		// add(WStringToUTF8(name));
-	char *s = (char*) malloc(msg->hdr.len);
-	// uint8_t *h = msg->raw;	// for backup
-	int bytes_read = parse_string_from_raw(msg->raw, s, msg->hdr.len - 14);
-	printf("\tname: %s (%d)\n", s, bytes_read);
-	free(s);
+	/* read the name of the robot */
+	char *s; 
+	int bytes_read = parse_stdstring_from_raw(msg->raw, &s);
+	printf("\tname: %s (%d)\n", s, bytes_read);	
+	free(s);	/* cleanup */
 
-		// add(static_cast<uint16>(protocolVersion));
+	/* read the protocol version */
 	uint16_t t;
 	parse_from_raw(msg->raw + bytes_read, &t);
 	printf("\tprotocol v: %u\n", t);
 	bytes_read += 2;
 
-		// add(static_cast<uint16>(bytecodeSize));
+	/* read the bytecode size */
 	parse_from_raw(msg->raw + bytes_read, &t);
 	printf("\tbytecode size: %u\n", t);
 	bytes_read += 2;
 
-		// add(static_cast<uint16>(stackSize));
+	/* read the stack size */
 	parse_from_raw(msg->raw + bytes_read, &t);
 	printf("\tstack size: %u\n", t);
 	bytes_read += 2;
-		// add(static_cast<uint16>(variablesSize));
+		
+	/* read the number of all variables */
 	parse_from_raw(msg->raw + bytes_read, &t);
 	printf("\tvariables size: %u\n", t);
 	bytes_read += 2;
 		
-		// add(static_cast<uint16>(namedVariables.size()));
+	/* read the number of all named variables */
 	parse_from_raw(msg->raw + bytes_read, &t);
 	printf("\tnamed variables size: %u\n", t);
 	bytes_read += 2;
 	*n_named_vars = t;
-		// // named variables are sent separately
+	/* the named variables are sent separately and need to parsed later */
 
-		// add(static_cast<uint16>(localEvents.size()));
+	/* read the number of all local events */
 	parse_from_raw(msg->raw + bytes_read, &t);
 	printf("\tlocal events size: %u\n", t);
 	bytes_read += 2;
 	*n_local_events = t;
-		// // local events are sent separately
+	/* the local events are sent separately and need to parsed later */
 		
-		// add(static_cast<uint16>(nativeFunctions.size()));
+	/* read the number of all native functions (e.g. leds, sound ...) */
 	parse_from_raw(msg->raw + bytes_read, &t);
 	printf("\tnative functions size: %u\n", t);
 	bytes_read += 2;
 	*n_native_funcs = t;
-		// native functions are sent separately
+	/* the native functions are sent separately and need to parsed later */
 
 	printf("%d bytes read of %d\n", bytes_read, msg->hdr.len);
 
@@ -271,20 +283,18 @@ int parse_desc_reply(message_t *msg, uint16_t *n_named_vars,
 /* reading this messages and print out the variables available
    but dropping them immediatley */
 int read_named_variables(int port, uint16_t cnt) {
-	uint16_t h; char* s = NULL;
+	uint16_t n_variables; char* s = NULL;
 	message_t msg = {{0,0,0}, NULL};
 
 	while(cnt-- > 0) {
 		read_message(port, &msg);
-		parse_from_raw(msg.raw, &h);
-		s = (char*) malloc(msg.hdr.len - 2);
-		UTF8ToWString(msg.raw + 2, msg.hdr.len - 2, s);
-		printf("\n\tvariable name: %s (%d)\t", s, h);
 
-		// printf("descr: (%d) ", msg.hdr.len);
-		// for(i = 0; i < strlen(s); i++) putchar(s[i]);
+		/* read the variable name into s */
+		parse_from_raw(msg.raw, &n_variables);
+		parse_stdstring_from_raw(msg.raw + 2, &s);
+		printf("\n\tvariable name: %s (%d)\t", s, n_variables);
+		if(s) free(s);	/* cleanup */
 
-		if(s) free(s);
 		if(msg.raw) free(msg.raw);
 	}
 	return 0;
@@ -303,8 +313,24 @@ int read_local_events(int port, uint16_t cnt) {
 /* reading this messages but dropping them immediatley */
 int read_native_functions(int port, uint16_t cnt) {
 	message_t msg = {{0,0,0}, NULL};
+	uint16_t bytes_parsed;
+	char *s = NULL;
 	while(cnt-- > 0) {
 		read_message(port, &msg);
+
+		/* read the function name into s */
+		bytes_parsed = parse_stdstring_from_raw(msg.raw, &s);
+		printf("\n\tnative function:\n\t\tname: %s\t", s);
+
+		if(s) free(s);	/* cleanup */
+
+		/* read the function description into s */
+		bytes_parsed = parse_stdstring_from_raw(msg.raw + bytes_parsed, &s);
+		// UTF8ToWString(msg.raw, msg.hdr.len, s);
+		printf("\n\t\tdesc: %s (%d)\t", s, bytes_parsed);
+		if(s) free(s);
+
+		
 		if(msg.raw) free(msg.raw);
 	}
 	return 0;	
@@ -382,7 +408,7 @@ int send_get_desc_msg(int port) {
 	printf("done!\n");
 
 	/* next messages contain the local events */
-	printf("reading native functions...");
+	printf("reading native functions... ");
 	read_native_functions(port, n_native_funcs);
 	printf("done!\n");
 
@@ -438,31 +464,8 @@ int send_set_vars_msg(int port,  uint16_t idx, uint16_t *values, uint16_t n_valu
 
 /* taken from Aseba source code */
 void UTF8ToWString(const uint8_t *s, int len, char *out) {
-	int j = 0;
-	for (int i = 0; i < len; ++i)	{
-		const uint8_t *a = &s[i];
-		if (*a == '\n' || *a == '\t' || *a == '\r') continue;
-		else if (!(*a&128)) {
-			//Byte represents an ASCII character. Direct copy will do.
-			if(isprint(*a)) out[j++] = *a;
-		}else if ((*a&192)==128)
-			//Byte is the middle of an encoded character. Ignore.
-			continue;
-		else if ((*a&224)==192)
-			//Byte represents the start of an encoded character in the range
-			//U+0080 to U+07FF
-			out[j++] = ((*a&31)<<6)|(a[1]&63);
-		else if ((*a&240)==224)
-			//Byte represents the start of an encoded character in the range
-			//U+07FF to U+FFFF
-			out[j++] = ((*a&15)<<12)|((a[1]&63)<<6)|(a[2]&63);
-		else if ((*a&248)==240)
-			//Byte represents the start of an encoded character beyond the
-			//U+FFFF limit of 16-bit integers
-			out[j++] = '?';
-	}
-	// TODO: add >UTF16 support
-	out[j++] = L'\0';
+	printf("does not exist anymore!");
+	exit(1);
 }
 
 // int test_write_message(int port, message_t *msg) {

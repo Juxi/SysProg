@@ -25,7 +25,7 @@ typedef struct message {
 	uint8_t *raw;
 } message_t;
 
-#define THYMIO_LIBRARY_VERSION 1
+#define THYMIO_LIBRARY_VERSION 2
 #define ASEBA_DEST_DEBUG 0
 #define ASEBA_PROTOCOL_VERSION 4
 #define	SLEEP_MS 10000          /* 10 ms */
@@ -82,7 +82,7 @@ void print_message_header(message_t *msg);
 
 /* parse content from the rawdata in the message */
 int parse_from_raw(const uint8_t *r, uint16_t *v);
-int parse_string_from_raw(const uint8_t *r, char *s, int len);
+int parse_string_from_raw(const uint8_t *r, char **s);
 /* equal to parse from raw but also moves the pointer! */
 int read_from_raw(uint8_t **r, uint16_t *v);
 

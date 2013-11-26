@@ -10,7 +10,8 @@
  ********************************************/
 #include <stdio.h>
 #include <stdlib.h>
-#include <fcntl.h>	// for open, close
+#include <fcntl.h>	// for open,
+#include <unistd.h> // for close
 #include <wchar.h>
 
 #include "thymio.h"
