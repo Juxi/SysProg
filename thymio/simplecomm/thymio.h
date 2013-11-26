@@ -25,7 +25,7 @@ typedef struct message {
 	uint8_t *raw;
 } message_t;
 
-#define THYMIO_LIBRARY_VERSION 2
+#define THYMIO_LIBRARY_VERSION 3
 #define ASEBA_DEST_DEBUG 0
 #define ASEBA_PROTOCOL_VERSION 4
 #define	SLEEP_MS 10000          /* 10 ms */
@@ -97,6 +97,7 @@ int send_get_desc_msg(int port);
 	int read_named_variables(int port, uint16_t cnt);
 	int read_local_events(int port, uint16_t cnt);
 	int read_native_functions(int port, uint16_t cnt);
+		int read_function_parameters(uint8_t *raw, uint16_t cnt);
 
 int send_get_vars_msg(int port, uint16_t idx, uint16_t n_values, message_t *msg);
 int send_set_vars_msg(int port, uint16_t idx, uint16_t *values, uint16_t n_values);

@@ -320,16 +320,43 @@ int read_native_functions(int port, uint16_t cnt) {
 		if(s) free(s);	/* cleanup */
 
 		/* read the function description into s */
-		bytes_parsed = parse_stdstring_from_raw(msg.raw + bytes_parsed, &s);
+		bytes_parsed += parse_stdstring_from_raw(msg.raw + bytes_parsed, &s);
 		// UTF8ToWString(msg.raw, msg.hdr.len, s);
-		printf("\n\t\tdesc: %s (%d)\t", s, bytes_parsed);
+		printf("\n\t\tdesc: %s\t", s);
 		if(s) free(s);
+
+		/* read the function description into s */
+		uint16_t t;
+		parse_from_raw(msg.raw + bytes_parsed, &t);
+		printf("\n\t\tparameters (%u):\n", t);
+		bytes_parsed += 2;
+
+		read_function_parameters(msg.raw + bytes_parsed, t);
 
 		
 		if(msg.raw) free(msg.raw);
 	}
 	return 0;	
 }
+
+int read_function_parameters(uint8_t *raw, uint16_t cnt) {
+	uint16_t bytes_parsed = 0, t;
+	char *s = NULL;
+	while(cnt-- > 0) {
+		/* read the parameter size */
+		parse_from_raw(raw + bytes_parsed, &t);
+		bytes_parsed += 2;
+
+		/* read the parameter name into s */
+		bytes_parsed += parse_stdstring_from_raw(raw + bytes_parsed, &s);
+		printf("\t\t\tname: %s \t[%d]\n", s, t);
+
+		if(s) free(s);	/* cleanup */
+	}
+
+	return 0;	
+}
+
 
 
 int send_reboot_msg(int port) {
