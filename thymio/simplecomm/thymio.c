@@ -176,11 +176,6 @@ void print_message_header(message_t *msg) {
 }
 
 
-uint16_t* swap_endian(uint16_t *buf, int n) {
-	int i = 0;
-	for(;i < n;i++) buf[i] = (buf[i] >> 8) | (buf[i] << 8);
-	return buf;
-}
 
 void disconnect(int signum) { close(intFH); }
 
@@ -460,35 +455,8 @@ int send_set_vars_msg(int port,  uint16_t idx, uint16_t *values, uint16_t n_valu
 	return 0;
 }
 
-
-
-/* taken from Aseba source code */
-void UTF8ToWString(const uint8_t *s, int len, char *out) {
-	printf("does not exist anymore!");
-	exit(1);
+uint16_t* swap_endian(uint16_t *buf, int n) {
+	int i = 0;
+	for(;i < n;i++) buf[i] = (buf[i] >> 8) | (buf[i] << 8);
+	return buf;
 }
-
-// int test_write_message(int port, message_t *msg) {
-// this works!:)
-// //	uint16_t arr[] = {0x00, 0x02, 0x00, 0x00, 0x00, 0x0e, 0x00, 0x01};
-// 	//uint16_t arr[] = {0x02, 0x00, 0x00, 0x00, 0x0e, 0x00, 0x01, 0x00};
-// //	printf("%d written\n", write(port, arr, 8));
-
-// 	uint16_t type = ASEBA_MESSAGE_REBOOT;
-
-// 	uint16_t len = 2;
-// 	uint16_t t;
-// 	write(port, &len, 2);
-// 	t = 0x00;
-// 	write(port, &t, 2);
-// 	t = type; // msg.type;
-// 	write(port, &t, 2);
-
-// 	len = 1;
-// 	uint8_t rawData[2] = { 0 };
-// 	const uint8_t *ptr = (const uint8_t *)&len; //reinterpret_cast<const uint8 *>(&dest);
-// 	rawData[0] = ptr[0];
-// 	rawData[1] = ptr[1];
-
-// 	write(port, &rawData[0], 2);
-// }

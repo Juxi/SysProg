@@ -112,7 +112,4 @@ void disconnect(int signum);
 	this function is actually not needed here */
 uint16_t* swap_endian(uint16_t *buf, int n);
 
-/*  convert a byte stream to a string  */
-void UTF8ToWString(const uint8_t *s, int len, char *out);
-
 #endif

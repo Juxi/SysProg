@@ -1,4 +1,6 @@
-CFLAGS=-Wall
+CFLAGS=-Wall -Wextra -g
+
+all: main test
 
 ####################################
 main: main.o thymio.o
