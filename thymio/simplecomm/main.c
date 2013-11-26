@@ -141,10 +141,34 @@ int main(int argc, char const *argv[]) {
 
 			/* stop the robot's motors */
 			case 's':
+				printf("stopping the robot's motors\n");
 				// send_stop_msg(usb_port) will stop the program running on it
 				*hvals = *(hvals + 1) = 0;
 				send_set_vars_msg(usb_port, THYMIO_MOTORS_ADDR, hvals, 2);
 				break;
+
+
+
+
+			/* do something to the program */
+			case 'p':
+				switch(line[1]) {
+					/*execute / run the aseba bytecode on the robot*/
+					case 'x':
+						printf("run program\n");
+						send_run_msg(usb_port);
+						break;
+					 
+					/* stop the aseba bytecode on the robot*/
+					case 's':
+						printf("stop program\n");
+						send_stop_msg(usb_port);
+						break;
+
+				}
+				break;
+
+
 
 			/* don't do anything */
 			case '\n': printf("\r"); break;

@@ -22,4 +22,4 @@ thymio.o: thymio.c thymio.h
 
 ####################################
 clean: 
-	rm -f *.o test
+	rm -f *.o test main

@@ -380,6 +380,28 @@ int send_reboot_msg(int port) {
 }
 
 
+int send_run_msg(int port) {
+	message_t msg = {{0, 0, 0}, NULL};
+
+	/* build message structure */
+	uint16_t data = THYMIO_ID;
+	create_message(&msg, ASEBA_MESSAGE_RUN, &data, 2);
+	write_message(port, &msg);
+	free(msg.raw);		/* Cleanup! */
+	
+	usleep(SLEEP_MS*10);
+	/* read some bytes */
+	printf("received %d bytes\n", read_message(port, &msg));
+
+	// uint16_t value;
+	// parse_from_raw(msg.raw, &value);
+	// printf("value of #%d is: %d\n", 0, value);
+	// parse_from_raw(msg.raw + 2, &value);
+	// printf("value of #%d is: %d\n", 1, value);
+
+	return 0;
+}
+
 int send_stop_msg(int port) {
 	message_t msg = {{0, 0, 0}, NULL};
 
