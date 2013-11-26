@@ -47,6 +47,9 @@ int main(int argc, char const *argv[]) {
 		fprintf(stderr, "Example: %s /dev/cu.usbmodem\n", argv[0]);
 		return EXIT_FAILURE;
 	}
+    
+    /* enable CTRL-C callback */
+	signal(SIGINT,disconnect);
 
 	/* Variables */
 	int usb_port;
