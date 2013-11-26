@@ -25,6 +25,7 @@ typedef struct message {
 	uint8_t *raw;
 } message_t;
 
+#define THYMIO_LIBRARY_VERSION 1
 #define ASEBA_DEST_DEBUG 0
 #define ASEBA_PROTOCOL_VERSION 4
 #define	SLEEP_MS 10000          /* 10 ms */
