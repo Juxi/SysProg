@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <fcntl.h>	// for open, close
+#include <unistd.h>
 
 #include "thymio.h"
 
