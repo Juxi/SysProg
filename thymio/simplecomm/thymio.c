@@ -277,23 +277,80 @@ int parse_desc_reply(message_t *msg, uint16_t *n_named_vars,
 
 /* reading this messages and print out the variables available
    but dropping them immediatley */
-int read_named_variables(int port, uint16_t cnt) {
-	uint16_t n_variables; char* s = NULL;
-	message_t msg = {{0,0,0}, NULL};
+// int read_named_variables(int port, uint16_t cnt) {
+// 	uint16_t n_variables; char* s = NULL;
+// 	message_t msg = {{0,0,0}, NULL};
 
+// 	while(cnt-- > 0) {
+// 		read_message(port, &msg);
+
+// 		/* read the variable name into s */
+// 		parse_from_raw(msg.raw, &n_variables);
+// 		parse_stdstring_from_raw(msg.raw + 2, &s);
+// 		printf("\n\tvariable name: %s (%d)\t", s, n_variables);
+// 		if(s) free(s);	/* cleanup */
+
+// 		if(msg.raw) free(msg.raw);
+// 	}
+// 	return 0;
+// }
+
+int find_variable_index(const char* name) {
+	for (int i = 0; i< nvariables;i++)
+	{
+		if (!strcmp(name,variables[i].name))
+			return  i;
+	}
+	return -1;
+}
+
+int send_get_vars_msg_by_name(int port,const char *name, message_t *msg) {
+	int index = find_variable_index(name);
+	if (index<0) return -1; 
+	uint16_t idx = variables[index].offset;
+	uint16_t n_values = variables[index].num;
+	return send_get_vars_msg(port, idx, n_values, msg);
+}
+
+int send_set_vars_msg_by_name(int port,const char *name, uint16_t* values, uint16_t n_values) {
+	int index = find_variable_index(name);
+	if (index<0) return -1; 
+	uint16_t idx = variables[index].offset;
+	if (n_values != variables[index].num) return -2;
+	return send_set_vars_msg(port, idx , values, n_values);
+}
+
+
+int read_named_variables(int port, uint16_t cnt) {
+	uint16_t h; char* s = NULL;
+	message_t msg = {{0,0,0}, NULL};
+	if (!variables) free (variables);
+	variables = 0;
+	nvariables = 0;
+	if (cnt) variables = malloc (cnt*sizeof(named_variable_t));
+	unsigned int offset = 0;
 	while(cnt-- > 0) {
 		read_message(port, &msg);
+		h = ((uint16_t*)msg.raw)[0];
+		s = (char*) malloc(msg.hdr.len - 2);
+		memcpy(s,msg.raw + 3,msg.hdr.len - 3);
+		s[msg.hdr.len - 3] = '\0';
+		//UTF8ToWString(msg.raw + 3, msg.hdr.len - 3, s);
+		printf("\n\tvariable name [%d]: %s (%d)\t",msg.raw[2], s, h);
+		strcpy(variables[nvariables].name,s);
+		variables[nvariables].num = h;
+		variables[nvariables].offset = offset;
+		nvariables++; offset += h;
+		// printf("descr: (%d) ", msg.hdr.len);
+		// for(i = 0; i < strlen(s); i++) putchar(s[i]);
 
-		/* read the variable name into s */
-		parse_from_raw(msg.raw, &n_variables);
-		parse_stdstring_from_raw(msg.raw + 2, &s);
-		printf("\n\tvariable name: %s (%d)\t", s, n_variables);
-		if(s) free(s);	/* cleanup */
-
+		if(s) free(s);
 		if(msg.raw) free(msg.raw);
 	}
 	return 0;
 }
+
+/*** end alex ***/
 
 /* reading this messages but dropping them immediatley */
 int read_local_events(int port, uint16_t cnt) {
@@ -414,6 +471,7 @@ int send_stop_msg(int port) {
 	usleep(SLEEP_MS*10);
 	/* read some bytes */
 	printf("received %d bytes\n", read_message(port, &msg));
+	/* TODO look what we got here! */
 
 	// uint16_t value;
 	// parse_from_raw(msg.raw, &value);
@@ -500,6 +558,33 @@ int send_set_vars_msg(int port,  uint16_t idx, uint16_t *values, uint16_t n_valu
 	free(data);		/* Cleanup! */	
 			
 	/* the set vars message does not yield a reply */
+
+	return 0;
+}
+
+int send_set_bytecode_msg(int port, uint8_t *code, uint16_t len) {
+	message_t msg = {{0, 0, 0}, NULL};
+	uint16_t start = 0;
+	
+	if(len > ASEBA_MAX_EVENT_ARG_COUNT - 2) {
+		printf("WARNING! Long bytecode sending not yet supported!\n");
+		return -1;
+	}
+	/* build message structure */
+	uint16_t *data = (uint16_t*) malloc(len + 4);
+	data[0] = (uint16_t) THYMIO_ID;
+	data[1] = start;
+	memcpy(data + 2, code, len);
+
+	create_message(&msg, ASEBA_MESSAGE_SET_VARIABLES, data, len + 4);
+	write_message(port, &msg);
+	//print_message_header(&msg);
+	free(msg.raw);	/* Cleanup! */
+	free(data);		/* Cleanup! */	
+			
+	/* read some bytes */
+	printf("received %d bytes\n", read_message(port, &msg));
+	print_message_header(&msg);
 
 	return 0;
 }
