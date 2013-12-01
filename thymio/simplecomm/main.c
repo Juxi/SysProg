@@ -248,6 +248,11 @@ int main(int argc, char const *argv[]) {
 				printf("\tg <variable_name> : get (all) the values of a given variable.\n");
 				printf("\tp <variable_name> <value1> ... : put (all) the values to a given variable.\n");
 				printf("\tr  : reset robot.\n");
+				printf("\tb<cmd> : relate to the bytecode program in the thymio.\n");
+				printf("\tbx : execute the bytecode program.\n");
+				printf("\tbs : stop the execution of the bytecode program.\n");	
+				printf("\tbu <filename> : upload a bytecode command to the robot.\n");	
+
 				printf("\n");
 				printf("\t?  : list all variables and more.\n");
 				printf("\tq  : quit the program.\n");
