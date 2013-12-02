@@ -40,6 +40,12 @@ int mygetline(char s[], int n) {
 	return 1;
 }
 
+void disconnect_and_exit(int sig) {
+	disconnect(sig);
+	printf("\nBye bye by %d!\n",sig);
+	exit(EXIT_SUCCESS);
+}
+
 
 /* * * * * * * * * * * * * * * * * * * * *
  * main function
@@ -52,7 +58,7 @@ int main(int argc, char const *argv[]) {
 	}
     
     /* enable CTRL-C callback */
-	signal(SIGINT,disconnect);
+	signal(SIGINT, disconnect_and_exit);
 
 	/* Variables */
 	int usb_port;

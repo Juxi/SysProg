@@ -324,25 +324,27 @@ int send_set_vars_msg_by_name(int port,const char *name, uint16_t* values, uint1
 int read_named_variables(int port, uint16_t cnt) {
 	uint16_t h; char* s = NULL;
 	message_t msg = {{0,0,0}, NULL};
-	if (!variables) free (variables);
-	variables = 0;
-	nvariables = 0;
-	if (cnt) variables = malloc (cnt*sizeof(named_variable_t));
 	unsigned int offset = 0;
+
+	/* reset the static variables */
+	if (!variables) free (variables);
+	if (cnt) variables = malloc (cnt*sizeof(named_variable_t));
+	else variables = NULL;
+	nvariables = 0;
+
 	while(cnt-- > 0) {
 		read_message(port, &msg);
-		h = ((uint16_t*)msg.raw)[0];
-		s = (char*) malloc(msg.hdr.len - 2);
-		memcpy(s,msg.raw + 3,msg.hdr.len - 3);
-		s[msg.hdr.len - 3] = '\0';
+
+		parse_from_raw(msg.raw, &h);
+		/* read the variable name into s */
+		parse_stdstring_from_raw(msg.raw + 2, &s);
 		//UTF8ToWString(msg.raw + 3, msg.hdr.len - 3, s);
-		printf("\n\tvariable name [%d]: %s (%d)\t",msg.raw[2], s, h);
+		printf("\n\tvariable name [%d]: %s (%d)\t", msg.raw[2], s, h);
 		strcpy(variables[nvariables].name,s);
 		variables[nvariables].num = h;
 		variables[nvariables].offset = offset;
-		nvariables++; offset += h;
-		// printf("descr: (%d) ", msg.hdr.len);
-		// for(i = 0; i < strlen(s); i++) putchar(s[i]);
+		nvariables++;
+		offset += h;
 
 		if(s) free(s);
 		if(msg.raw) free(msg.raw);
