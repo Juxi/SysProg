@@ -100,9 +100,6 @@ typedef struct {
 	unsigned int offset; 
 } named_variable_t;
 
-static named_variable_t* variables = 0;
-static int nvariables = 0;
-
 /* functiosn related to the stored named_variables */
 int find_variable_index(const char* name);
 

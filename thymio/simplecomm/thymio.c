@@ -24,6 +24,10 @@
 /* Global variable  */
 static int intFH; /* keep a copy of the port handle for the interrupt signal */
 
+static named_variable_t* variables = 0;
+static int nvariables = 0;
+
+
 
 int connect(const char *port_name) {
 	int port;
@@ -322,7 +326,7 @@ int send_set_vars_msg_by_name(int port,const char *name, uint16_t* values, uint1
 
 
 int read_named_variables(int port, uint16_t cnt) {
-	uint16_t h; char* s = NULL;
+	uint16_t n_variables; char* s = NULL;
 	message_t msg = {{0,0,0}, NULL};
 	unsigned int offset = 0;
 
@@ -335,18 +339,24 @@ int read_named_variables(int port, uint16_t cnt) {
 	while(cnt-- > 0) {
 		read_message(port, &msg);
 
-		parse_from_raw(msg.raw, &h);
 		/* read the variable name into s */
-		parse_stdstring_from_raw(msg.raw + 2, &s);
-		//UTF8ToWString(msg.raw + 3, msg.hdr.len - 3, s);
-		printf("\n\tvariable name [%d]: %s (%d)\t", msg.raw[2], s, h);
-		strcpy(variables[nvariables].name,s);
-		variables[nvariables].num = h;
-		variables[nvariables].offset = offset;
-		nvariables++;
-		offset += h;
+        parse_from_raw(msg.raw, &n_variables);
+        parse_stdstring_from_raw(msg.raw + 2, &s);
+        printf("\n\tvariable name: %s (%d)\t", s, n_variables);
+        
+        if(s) free(s);        /* cleanup */		
 
-		if(s) free(s);
+		// parse_from_raw(msg.raw, &h);
+		// /* read the variable name into s */
+		// parse_stdstring_from_raw(msg.raw + 2, &s);
+		// printf("\n\tvariable name [%d]: %s (%d)\t", msg.raw[2], s, h);
+		// strcpy(variables[nvariables].name,s);
+		// variables[nvariables].num = h;
+		// variables[nvariables].offset = offset;
+		// nvariables++;
+		// offset += h;
+
+		// if(s) free(s);
 		if(msg.raw) free(msg.raw);
 	}
 	return 0;
@@ -578,7 +588,7 @@ int send_set_bytecode_msg(int port, uint8_t *code, uint16_t len) {
 	data[1] = start;
 	memcpy(data + 2, code, len);
 
-	create_message(&msg, ASEBA_MESSAGE_SET_VARIABLES, data, len + 4);
+	create_message(&msg, ASEBA_MESSAGE_SET_BYTECODE, data, len + 4);
 	write_message(port, &msg);
 	//print_message_header(&msg);
 	free(msg.raw);	/* Cleanup! */

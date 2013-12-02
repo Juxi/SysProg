@@ -239,6 +239,34 @@ int main(int argc, char const *argv[]) {
 						free(rp);	/* Cleanup! */
 						break;
 
+					/* download a aseba bytecode program onto the robot*/
+					case 'd':
+						printf("download a bytecode program NOT YET IMPLEMENTED\n");
+
+						// if(strlen(line) < 3) {
+						// 	printf("no file name given!\n");
+						// 	printf("USAGE: bu <filename>\n");
+						// 	continue;
+						// }
+						
+						// /* load a program from bytecode */						
+						// if(line[strlen(line) - 1] == '\n') line[strlen(line) - 1] = 0; 
+						// if((h = open(line + 3, O_RDONLY)) == -1) {
+						// 	printf("Could not open file '%s'!\n", line + 3);
+						// 	continue;
+						// }
+
+						// rp = (uint8_t*) malloc(ASEBA_MAX_EVENT_ARG_COUNT);
+						// h1 = read(h, rp, ASEBA_MAX_EVENT_ARG_COUNT);
+						// close(h);
+
+						// h1 -= 0x00a;	/* jump over the header in the file */
+						// h1 -= 1;		/* do not send the last byte, it's a chksum */
+
+						// if(h1 > 0) send_set_bytecode_msg(usb_port, rp + 0x00a, h1);
+
+						// free(rp);	/* Cleanup! */
+						break;
 
 				}
 				break;
