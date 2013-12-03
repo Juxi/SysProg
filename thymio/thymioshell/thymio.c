@@ -1,13 +1,24 @@
-/*******************************************
+/*********************************************************
  * Simple Thymio USB Communication 
  * thymio.h
  *
  * Systems Programming BSc course    (2013)
  * Universita della Svizzera Italiana (USI)
  * 
- * author: Juxi Leitner <juxi@idsia.ch>
- *         http://Juxi.net/
- ********************************************/
+ * authors: Juxi Leitner <juxi@idsia.ch>, http://Juxi.net/
+ *          Alexander Förster <alexander@idsia.ch>
+ *********************************************************/
+
+/*
+
+see: 
+
+aseba/common/msg/msg.h
+aseba/common/msg/msg.cpp
+aseba/examples/clients/cpp-shell/shell.cpp
+aseba/clients/studio/DashelTarget.cpp
+
+*/
 
 #include "thymio.h"
 
@@ -24,8 +35,9 @@
 /* Global variable  */
 static int intFH; /* keep a copy of the port handle for the interrupt signal */
 
-static named_variable_t* variables = 0;
-static int nvariables = 0;
+named_variable_t* variables = 0;
+int nvariables = 0;
+
 
 
 int connect(const char *port_name) {
@@ -109,6 +121,8 @@ int write_message(int port, message_t *msg) {
 	}
 	int written_bytes = 0;
 
+	// print_mesage_header(&msg);
+	
 	/* write the message header (len, src, type) */
 	written_bytes = write(port, &msg->hdr.len, 2);
 	written_bytes += write(port, &msg->hdr.src, 2);
@@ -121,7 +135,6 @@ int write_message(int port, message_t *msg) {
 	fsync(port);
 	printf("wrote %d bytes\n", written_bytes);
 	return written_bytes;
-
 }
 
 int read_message(int port, message_t *msg) {
@@ -155,7 +168,7 @@ void print_message_header(message_t *msg) {
 
 
 
-void disconnect(int signum) { close(intFH); }
+void disconnect(int __attribute__((unused))signum) { close(intFH); }
 
 
 int read_from_raw(uint8_t **r, uint16_t *v) {
@@ -171,17 +184,6 @@ int parse_from_raw(const uint8_t *r, uint16_t *v) {
 	return 0;
 }
 
-// int parse_string_from_raw(const uint8_t *r, char *s, int len) {
-
-
-// 	int i;
-// 	for(i = 0; i < len; i++) {
-// 		s[i] = r[i];
-// 	}
-// 	s[i] = '\0';
-// 	return i;
-// }
-
 int parse_stdstring_from_raw(const uint8_t *r, char **p_in) {
 	uint8_t len = *r; 
 	int i;
@@ -192,7 +194,6 @@ int parse_stdstring_from_raw(const uint8_t *r, char **p_in) {
 	s[i++] = '\0';
 	return i;
 }
-
 
 
 int parse_desc_reply(message_t *msg, uint16_t *n_named_vars,
@@ -252,9 +253,9 @@ int parse_desc_reply(message_t *msg, uint16_t *n_named_vars,
 	return 0;
 }
 
-
 int find_variable_index(const char* name) {
-	for (int i = 0; i< nvariables;i++) {
+	for (int i = 0; i< nvariables;i++)
+	{
 		if (!strcmp(name,variables[i].name))
 			return  i;
 	}
@@ -263,7 +264,7 @@ int find_variable_index(const char* name) {
 
 int send_get_vars_msg_by_name(int port,const char *name, message_t *msg) {
 	int index = find_variable_index(name);
-	if (index < 0) return -1; 
+	if (index<0) return -1; 
 	uint16_t idx = variables[index].offset;
 	uint16_t n_values = variables[index].num;
 	return send_get_vars_msg(port, idx, n_values, msg);
@@ -271,47 +272,41 @@ int send_get_vars_msg_by_name(int port,const char *name, message_t *msg) {
 
 int send_set_vars_msg_by_name(int port,const char *name, uint16_t* values, uint16_t n_values) {
 	int index = find_variable_index(name);
-	if (index < 0) return -1; 
-	printf("%d: %s\n", index, name);
+	if (index<0) return -1; 
 	uint16_t idx = variables[index].offset;
 	if (n_values != variables[index].num) return -2;
 	return send_set_vars_msg(port, idx , values, n_values);
 }
 
-/* reading this messages and print out the variables available
-   and store them in a dictionary structure */
+
 int read_named_variables(int port, uint16_t cnt) {
-	uint16_t n_variables; char* s = NULL;
+	uint16_t h; char* s = NULL;
 	message_t msg = {{0,0,0}, NULL};
-	unsigned int offset = 0;
-
-	/* reset the static variables */
 	if (!variables) free (variables);
-	if (cnt) variables = malloc (cnt*sizeof(named_variable_t));
-	else variables = NULL;
+	variables = 0;
 	nvariables = 0;
-
+	if (cnt) variables = malloc (cnt*sizeof(named_variable_t));
+	unsigned int offset = 0;
 	while(cnt-- > 0) {
 		read_message(port, &msg);
-
-		/* read the variable name into s */
-        parse_from_raw(msg.raw, &n_variables);
-        parse_stdstring_from_raw(msg.raw + 2, &s);
-        printf("\n\tvariable name: %s (%d)\t", s, n_variables);
-        
+		h = ((uint16_t*)msg.raw)[0];
+		s = (char*) malloc(msg.hdr.len - 2);
+		memcpy(s,msg.raw + 3,msg.hdr.len - 3);
+		s[msg.hdr.len - 3] = '\0';
+		//UTF8ToWString(msg.raw + 3, msg.hdr.len - 3, s);
+		printf("\n\tvariable name [%d]: %s (%d)\t",msg.raw[2], s, h);
 		strcpy(variables[nvariables].name,s);
-		variables[nvariables].num = n_variables;
+		variables[nvariables].num = h;
 		variables[nvariables].offset = offset;
-		nvariables++;
-		offset += n_variables;
+		nvariables++; offset += h;
+		// printf("descr: (%d) ", msg.hdr.len);
+		// for(i = 0; i < strlen(s); i++) putchar(s[i]);
 
-        if(s) free(s);        /* cleanup */		
+		if(s) free(s);
 		if(msg.raw) free(msg.raw);
 	}
 	return 0;
 }
-
-/*** end alex ***/
 
 /* reading this messages but dropping them immediatley */
 int read_local_events(int port, uint16_t cnt) {
@@ -411,6 +406,12 @@ int send_run_msg(int port) {
 	/* read some bytes */
 	printf("received %d bytes\n", read_message(port, &msg));
 
+	// uint16_t value;
+	// parse_from_raw(msg.raw, &value);
+	// printf("value of #%d is: %d\n", 0, value);
+	// parse_from_raw(msg.raw + 2, &value);
+	// printf("value of #%d is: %d\n", 1, value);
+
 	return 0;
 }
 
@@ -427,6 +428,30 @@ int send_stop_msg(int port) {
 	/* read some bytes */
 	printf("received %d bytes\n", read_message(port, &msg));
 	/* TODO look what we got here! */
+
+	// uint16_t value;
+	// parse_from_raw(msg.raw, &value);
+	// printf("value of #%d is: %d\n", 0, value);
+	// parse_from_raw(msg.raw + 2, &value);
+	// printf("value of #%d is: %d\n", 1, value);
+
+	return 0;
+}
+
+int send_reset_msg(int port) {
+	message_t msg = {{0, 0, 0}, NULL};
+
+	/* build message structure */
+	uint16_t data = THYMIO_ID;
+	create_message(&msg, ASEBA_MESSAGE_RESET, &data, 2);
+	write_message(port, &msg);
+	free(msg.raw);		/* Cleanup! */
+	
+	usleep(SLEEP_MS*10);
+	/* read some bytes */
+	printf("received %d bytes\n", read_message(port, &msg));
+	/* TODO look what we got here! */
+
 	// uint16_t value;
 	// parse_from_raw(msg.raw, &value);
 	// printf("value of #%d is: %d\n", 0, value);
@@ -541,10 +566,4 @@ int send_set_bytecode_msg(int port, uint8_t *code, uint16_t len) {
 	print_message_header(&msg);
 
 	return 0;
-}
-
-uint16_t* swap_endian(uint16_t *buf, int n) {
-	int i = 0;
-	for(;i < n;i++) buf[i] = (buf[i] >> 8) | (buf[i] << 8);
-	return buf;
 }
